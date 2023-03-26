@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	enteringChannel = make(chan *User)     // 进入
-	leavingChannel  = make(chan *User)     // 退出
-	messageChannel  = make(chan string, 8) // 全局消息
+	enteringChannel = make(chan *User)      // 进入
+	leavingChannel  = make(chan *User)      // 退出
+	messageChannel  = make(chan Message, 8) // 全局消息
 )
 
 // User User结构体
@@ -22,6 +22,12 @@ type User struct {
 	Addr           string      // 用户ID地址和端口
 	EnterAt        time.Time   // 用户进入时间
 	MessageChannel chan string // 当前用户发送消息的通道
+}
+
+// Message Message结构体
+type Message struct {
+	OwnerID string // 消息的发出者ID
+	Content string // 消息内容
 }
 
 func main() {
@@ -59,7 +65,10 @@ func handleConn(conn net.Conn) {
 
 	// 3. 给当前用户发送Welcome消息 给其他用户发送has enter消息
 	user.MessageChannel <- "Welcome, " + user.ID
-	messageChannel <- "User: `" + user.ID + "` has enter."
+	messageChannel <- Message{
+		OwnerID: user.ID,
+		Content: "User: `" + user.ID + "` has enter.",
+	}
 
 	// 4. 当前用户写入全局用户列表
 	enteringChannel <- user
@@ -67,7 +76,10 @@ func handleConn(conn net.Conn) {
 	// 5. 读取用户输入并广播发送
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		messageChannel <- user.ID + ": " + input.Text()
+		messageChannel <- Message{
+			OwnerID: user.ID,
+			Content: user.ID + ": " + input.Text(),
+		}
 	}
 	if err := input.Err(); err != nil {
 		log.Println(err)
@@ -75,7 +87,10 @@ func handleConn(conn net.Conn) {
 
 	// 6. 用户离开 进入leavingChannel 并向其他所有用户发送left消息
 	leavingChannel <- user
-	messageChannel <- "User: `" + user.ID + "` has left."
+	messageChannel <- Message{
+		OwnerID: user.ID,
+		Content: "User: `" + user.ID + "` has left.",
+	}
 }
 
 // sendMessage 给客户端发送消息
@@ -98,7 +113,9 @@ func broadcaster() {
 			close(user.MessageChannel) // 避免 goroutine 泄露
 		case msg := <-messageChannel:
 			for user := range users {
-				user.MessageChannel <- msg
+				if user.ID != msg.OwnerID {
+					user.MessageChannel <- msg.Content
+				}
 			}
 		}
 	}
