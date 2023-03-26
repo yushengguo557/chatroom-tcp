@@ -59,7 +59,7 @@ func handleConn(conn net.Conn) {
 		EnterAt:        time.Now(),
 		MessageChannel: make(chan string, 8),
 	}
-
+	log.Println("###" + user.ID + "has enter the chatroom." + "###")
 	// 2. 给 user 发消息
 	go sendMessage(conn, user.MessageChannel)
 
