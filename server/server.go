@@ -32,6 +32,7 @@ type Message struct {
 
 func main() {
 	listener, err := net.Listen("tcp", ":2023")
+	log.Println("Listening on port 2023...")
 	if err != nil {
 		log.Println(err)
 	}
@@ -59,7 +60,7 @@ func handleConn(conn net.Conn) {
 		EnterAt:        time.Now(),
 		MessageChannel: make(chan string, 8),
 	}
-	log.Println("###" + user.ID + "has enter the chatroom." + "###")
+	log.Println("--- " + user.Addr + " has enter the chatroom." + " ---")
 	// 2. 给 user 发消息
 	go sendMessage(conn, user.MessageChannel)
 
